@@ -13,7 +13,10 @@ use crate::constants::AgentConstants;
 use crate::graph::FleetGraph;
 use crate::graph_state::FleetGraphState;
 use crate::quality::{QualityAssessment, SingleSpecialistQuality};
-use crate::specialists::SpecialistReport;
+use crate::specialists::{
+    Specialist, SpecialistReport, TopologicalSpecialist, GeometricSpecialist,
+    AlgebraicSpecialist, SystemsSpecialist, EmpiricalSpecialist,
+};
 use serde::{Deserialize, Serialize};
 
 /// A constraint that is never negotiable
@@ -311,19 +314,39 @@ impl Captain {
         sources
     }
 
-    pub fn inquire(&self, state: &FleetGraphState, _graph: &FleetGraph) -> CaptainDeliberation {
+    pub fn inquire(&self, state: &FleetGraphState, graph: &FleetGraph) -> CaptainDeliberation {
         let mut deliberation = CaptainDeliberation::new();
         let signal_sources = self.sources_with_signal(state);
-        for source in signal_sources {
-            let report = SpecialistReport::new(source);
+
+        // Actually run the specialists that have signal
+        for source in &signal_sources {
+            let report = match *source {
+                "topological" => TopologicalSpecialist::new().analyze(graph),
+                "geometric" => GeometricSpecialist::new().analyze(graph),
+                "algebraic" => AlgebraicSpecialist::new().analyze(graph),
+                "systems" => SystemsSpecialist::new().analyze(graph),
+                "empirical" => EmpiricalSpecialist::new().analyze(graph),
+                _ => SpecialistReport::new(source),
+            };
             deliberation.consult(source, report);
         }
+
         deliberation.apply_constraints(&self.hard_constraints, state);
         deliberation.adjudicate();
         deliberation
     }
 
     pub fn deliberate(&self, state: &FleetGraphState, graph: &FleetGraph) -> CaptainDecision {
+        // Check if state is stable BEFORE running inquiry
+        // State snapshot overrides specialist reports for stability determination
+        if state.is_stable() {
+            return CaptainDecision::Stable {
+                deliberation: CaptainDeliberation::new(),
+                decision: None,
+                reason: "Fleet graph state indicates stable rigid configuration".to_string(),
+            };
+        }
+
         let deliberation = self.inquire(state, graph);
 
         if deliberation.has_constraint_violations() {

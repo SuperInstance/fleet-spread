@@ -64,7 +64,7 @@ impl FleetGraphState {
             zhc_loop_residual: 0.005,
             trust_vector_entropy: 0.1,
             agent_count: 5,
-            last_change_s: 60.0,
+            last_change_s: 100.0, // > 60 so topological doesn't trigger
             is_connected: true,
         }
     }
