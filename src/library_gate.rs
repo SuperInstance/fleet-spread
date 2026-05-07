@@ -56,11 +56,25 @@ impl std::fmt::Display for Specialist {
     }
 }
 
-/// Library gate — selects the ONE correct specialist based on fleet graph state
+/// Library gate — selects specialists based on fleet graph state
 ///
-/// The gate maintains agent constants and uses them to make selection decisions.
-/// In bilateral constant-matching, the gate asks: "given this state, which of
-/// my constants matches?"
+/// The gate implements bilateral constant-matching: given fleet graph state,
+/// it determines which specialists have relevant signal RIGHT NOW.
+///
+/// # Two Selection Modes
+///
+/// - `select()` — returns THE ONE most critical specialist (for action)
+/// - `all_with_signal()` — returns ALL specialists with relevant signal (for captain's inquiry)
+///
+/// # Gate Table (bilateral constant-matching)
+///
+/// | Condition | Signal Source | Why |
+/// |-----------|---------------|-----|
+/// | V < 3 | Systems | Insufficient data |
+/// | Trust vector noisy | Algebraic | Encoding analysis |
+/// | β₁ rising | Topological | H¹ emergence |
+/// | ZHC loop degraded | Geometric | ZHC closure |
+/// | Agent count changed | Empirical | Trust drift |
 pub struct LibraryGate {
     constants: AgentConstants,
 }
@@ -134,6 +148,49 @@ impl LibraryGate {
 
         // Default: fleet is stable, no specialist needed
         None
+    }
+
+    /// Return ALL specialists that have relevant signal for this state
+    ///
+    /// Used by the captain for wide inquiry phase. Unlike `select()` which
+    /// returns only the most critical specialist, this returns every specialist
+    /// whose signal condition is met.
+    ///
+    /// Priority doesn't apply here — we want the full picture for the captain's
+    /// inquiry phase. The captain decides what to do with the signal.
+    pub fn all_with_signal(&self, state: &FleetGraphState) -> Vec<Specialist> {
+        let mut specialists = Vec::new();
+
+
+        // Systems: always relevant (safety monitoring is always on)
+        if state.V >= 3 {
+            specialists.push(Specialist::Systems);
+        } else {
+            // Even small graphs need systems analysis
+            specialists.push(Specialist::Systems);
+        }
+
+        // Geometric: relevant when ZHC is degraded (geometric inconsistency = immediate signal)
+        if state.zhc_loop_residual > self.constants.zhc_tolerance {
+            specialists.push(Specialist::Geometric);
+        }
+
+        // Algebraic: relevant when trust vector is noisy
+        if state.trust_vector_entropy > 0.5 {
+            specialists.push(Specialist::Algebraic);
+        }
+
+        // Topological: relevant when β₁ is elevated (H¹ emergence tracking)
+        if state.beta_1 > self.constants.beta_threshold {
+            specialists.push(Specialist::Topological);
+        }
+
+        // Empirical: relevant when agent count has changed
+        if state.agent_count != state.V {
+            specialists.push(Specialist::Empirical);
+        }
+
+        specialists
     }
 
     /// Select specialist for a task (bilateral constant-matching)
@@ -266,5 +323,59 @@ mod tests {
         let mut state = FleetGraphState::noisy_trust();
         state.beta_1 = 10.0; // Rising beta
         assert_eq!(gate.select(&state), Some(Specialist::Algebraic));
+    }
+
+    #[test]
+    fn test_all_with_signal_stable_fleet() {
+        let gate = LibraryGate::new();
+        let state = FleetGraphState::stable_rigid();
+        // Stable fleet: only systems (always on) + algebraic if noisy (but trust is not noisy here)
+        // Actually: stable_rigid has trust_vector_entropy = 0.1, so only systems
+        let signal = gate.all_with_signal(&state);
+        assert!(signal.contains(&Specialist::Systems));
+        assert!(!signal.contains(&Specialist::Topological));
+    }
+
+    #[test]
+    fn test_all_with_signal_rising_beta() {
+        let gate = LibraryGate::new();
+        let state = FleetGraphState::rising_beta();
+        // Rising beta: systems + topological
+        let signal = gate.all_with_signal(&state);
+        assert!(signal.contains(&Specialist::Systems));
+        assert!(signal.contains(&Specialist::Topological));
+    }
+
+    #[test]
+    fn test_all_with_signal_degraded_zhc() {
+        let gate = LibraryGate::new();
+        let state = FleetGraphState::degraded_zhc();
+        // Degraded ZHC: systems + geometric
+        let signal = gate.all_with_signal(&state);
+        assert!(signal.contains(&Specialist::Systems));
+        assert!(signal.contains(&Specialist::Geometric));
+    }
+
+    #[test]
+    fn test_all_with_signal_noisy_trust() {
+        let gate = LibraryGate::new();
+        let state = FleetGraphState::noisy_trust();
+        // Noisy trust: systems + algebraic
+        let signal = gate.all_with_signal(&state);
+        assert!(signal.contains(&Specialist::Systems));
+        assert!(signal.contains(&Specialist::Algebraic));
+    }
+
+
+    #[test]
+    fn test_all_with_signal_multiple_signals() {
+        let gate = LibraryGate::new();
+        // Rising beta AND degraded ZHC: systems + topological + geometric
+        let mut state = FleetGraphState::rising_beta();
+        state.zhc_loop_residual = 0.15; // Degrade ZHC too
+        let signal = gate.all_with_signal(&state);
+        assert!(signal.contains(&Specialist::Systems));
+        assert!(signal.contains(&Specialist::Topological));
+        assert!(signal.contains(&Specialist::Geometric));
     }
 }
