@@ -1,10 +1,17 @@
-//! Synthesis layer - combines 5 specialist reports into unified analysis
+//! Synthesis layer - combines specialist reports into unified analysis
+//!
+//! v1 (MoE-style): Ran all 5 specialists, synthesized results
+//! v2 (library-gate): Selects ONE specialist, assesses output quality
 
 use crate::specialists::SpecialistReport;
 use serde::{Deserialize, Serialize};
 
 /// Synthesis output combining all specialist perspectives
+///
+/// DEPRECATED for v2 - library gate only runs ONE specialist.
+/// Use `SpecialistValueReport` for v2.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[deprecated(since = "0.2.0", note = "Use SpecialistValueReport for v2 library-gate architecture")]
 pub struct SynthesisReport {
     pub robust_findings: Vec<RobustFinding>,
     pub tensions: Vec<Tension>,
@@ -51,6 +58,9 @@ impl SynthesisEngine {
     }
 
     /// Synthesize multiple specialist reports
+    ///
+    /// DEPRECATED for v2 - library gate only runs ONE specialist.
+    #[deprecated(since = "0.2.0", note = "Use LibraryGate::select_and_run for v2")]
     pub fn synthesize(&self, reports: Vec<SpecialistReport>) -> SynthesisReport {
         let robust = self.find_robust_findings(&reports);
         let tensions = self.find_tensions(&reports);
@@ -206,15 +216,13 @@ impl SynthesisEngine {
     }
 
     /// Calculate synthesis gain: does unified analysis add value?
+    #[allow(deprecated)]
     fn calculate_synthesis_gain(&self, reports: &[SpecialistReport]) -> f64 {
         if reports.is_empty() {
             return 0.0;
         }
 
-        let total_info: f64 = reports.iter()
-            .map(|r| r.information_content())
-            .sum();
-
+        // Deprecated function - still used by old API
         let best_single = reports.iter()
             .map(|r| r.information_content())
             .fold(0.0f64, f64::max);
@@ -258,6 +266,7 @@ impl SynthesisEngine {
 }
 
 /// Interpret synthesis results for a specific graph type
+#[allow(deprecated)]
 pub fn interpret_synthesis(synthesis: &SynthesisReport, graph_type: &str) -> String {
     let mut parts = Vec::new();
 
@@ -289,8 +298,34 @@ pub fn interpret_synthesis(synthesis: &SynthesisReport, graph_type: &str) -> Str
     parts.join("\n")
 }
 
+// =============================================================================
+// V2 Single-Specialist Value Assessment
+// =============================================================================
+
+use crate::quality::{SingleSpecialistQuality, SpecialistValueReport};
+
+/// Assess a single specialist's output for v2 library-gate architecture.
+///
+/// This replaces the MoE synthesis approach with a simple question:
+/// "Did the selected specialist produce useful output?"
+pub fn assess_single_specialist(specialist_id: &str, report: SpecialistReport) -> SpecialistValueReport {
+    SpecialistValueReport::from_specialist(specialist_id, report)
+}
+
+/// Quick check if a specialist's output passed the quality gate.
+pub fn specialist_passed(specialist_id: &str, report: &SpecialistReport) -> bool {
+    let quality = SingleSpecialistQuality::calculate(report);
+    matches!(
+        quality.assessment,
+        crate::quality::QualityAssessment::Excellent
+        | crate::quality::QualityAssessment::Good
+        | crate::quality::QualityAssessment::Fair
+    )
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
     use super::*;
 
     fn make_test_reports() -> Vec<SpecialistReport> {
@@ -333,6 +368,7 @@ mod tests {
 
     #[test]
     fn test_synthesis_finds_robust_findings() {
+        #[allow(deprecated)]
         let engine = SynthesisEngine::new();
         let reports = make_test_reports();
         let synthesis = engine.synthesize(reports);
@@ -343,10 +379,30 @@ mod tests {
 
     #[test]
     fn test_synthesis_confidence() {
+        #[allow(deprecated)]
         let engine = SynthesisEngine::new();
         let reports = make_test_reports();
         let synthesis = engine.synthesize(reports);
 
         assert!(synthesis.overall_confidence > 0.7);
+    }
+
+    #[test]
+    fn test_single_specialist_assessment() {
+        let mut report = SpecialistReport::new("topological");
+        report.add_finding("Graph is Laman-rigid (E=7=2V-3)".to_string(), 0.9, vec!["V=5, E=7".to_string()]);
+        report.add_finding("Cycle 3 has high holonomy".to_string(), 0.85, vec!["holonomy=0.95".to_string()]);
+        report.confidence = 0.88;
+
+        let value_report = assess_single_specialist("topological", report);
+        assert!(value_report.passed());
+        assert!(value_report.value_score > 0.0);
+    }
+
+    #[test]
+    fn test_single_specialist_empty_fails() {
+        let report = SpecialistReport::new("topological");
+        let value_report = assess_single_specialist("topological", report);
+        assert!(!value_report.passed());
     }
 }

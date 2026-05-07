@@ -55,9 +55,9 @@ pub mod library_gate;
 
 pub use graph::{FleetGraph, Vertex, Edge, TrustValue};
 pub use specialists::{SpecialistReport, Specialist};
-pub use synthesis::{SynthesisReport, SynthesisEngine, interpret_synthesis};
+pub use synthesis::{SynthesisReport, SynthesisEngine, interpret_synthesis, assess_single_specialist, specialist_passed};
 pub use plato_tile::{PlatoTile, TileWriter, format_tiles_markdown};
-pub use quality::{QualityReport, QualityAssessment};
+pub use quality::{QualityReport, QualityAssessment, SingleSpecialistQuality, SpecialistValueReport};
 pub use constants::AgentConstants;
 pub use task::TaskRequirements;
 pub use graph_state::FleetGraphState;
