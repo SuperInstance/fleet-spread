@@ -52,6 +52,7 @@ pub mod constants;
 pub mod task;
 pub mod graph_state;
 pub mod library_gate;
+pub mod captain;
 
 pub use graph::{FleetGraph, Vertex, Edge, TrustValue};
 pub use specialists::{SpecialistReport, Specialist};
@@ -62,6 +63,7 @@ pub use constants::AgentConstants;
 pub use task::TaskRequirements;
 pub use graph_state::FleetGraphState;
 pub use library_gate::LibraryGate;
+pub use captain::{Captain, CaptainDecision, CaptainDeliberation, HardConstraint, ProbabilityDistribution};
 
 use specialists::{TopologicalSpecialist, GeometricSpecialist, AlgebraicSpecialist, SystemsSpecialist, EmpiricalSpecialist};
 

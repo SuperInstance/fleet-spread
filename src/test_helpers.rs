@@ -59,6 +59,11 @@ pub fn make_over_connected() -> FleetGraph {
     FleetGraph::new("test-over-connected".into(), vertices, edges)
 }
 
+/// Create a default test graph (alias for make_small_rigid)
+pub fn make_graph() -> FleetGraph {
+    make_small_rigid()
+}
+
 /// Create a disconnected fleet graph (V=8, 2 components)
 pub fn make_disconnected() -> FleetGraph {
     let vertices = (0..8).map(|i| Vertex {

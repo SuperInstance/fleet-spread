@@ -16,7 +16,7 @@ use crate::graph::FleetGraph;
 use serde::{Deserialize, Serialize};
 
 /// A finding from a specialist analysis
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Finding {
     pub claim: String,
     pub confidence: f64,
