@@ -161,12 +161,11 @@ impl LibraryGate {
     pub fn all_with_signal(&self, state: &FleetGraphState) -> Vec<Specialist> {
         let mut specialists = Vec::new();
 
-
-        // Systems: always relevant (safety monitoring is always on)
+        // Systems: always relevant (safety monitoring is always on for V >= 3)
+        // Even small graphs (V < 3) need systems analysis for data sufficiency
         if state.V >= 3 {
             specialists.push(Specialist::Systems);
         } else {
-            // Even small graphs need systems analysis
             specialists.push(Specialist::Systems);
         }
 
