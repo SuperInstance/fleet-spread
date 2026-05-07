@@ -1,5 +1,7 @@
 # fleet-spread
 
+[![CI](https://github.com/SuperInstance/fleet-spread/actions/workflows/ci.yml/badge.svg)](https://github.com/SuperInstance/fleet-spread/actions/workflows/ci.yml)
+
 Fleet graph analysis with library gate architecture (v2).
 
 **v2 insight:** Don't run all 5 specialists — select THE ONE that matches.
