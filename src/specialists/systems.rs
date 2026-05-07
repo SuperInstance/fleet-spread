@@ -115,9 +115,11 @@ impl SystemsSpecialist {
             let vertices_in_comp = self.extract_component(graph, &vertex.id, &mut visited);
             let v = vertices_in_comp.len();
             let e = graph.edges.iter().filter(|edge| vertices_in_comp.contains(&edge.from) && vertices_in_comp.contains(&edge.to)).count();
-            let lamancount = 2 * v - 3;
+            let lamancount = if v >= 2 { 2 * v - 3 } else { 0 };
 
             let rigidity_status: &str = if v < 3 {
+                "too_small"
+            } else if lamancount == 0 {
                 "too_small"
             } else if e < lamancount {
                 "under_constrained"

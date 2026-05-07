@@ -53,6 +53,7 @@ pub mod task;
 pub mod graph_state;
 pub mod library_gate;
 pub mod captain;
+pub mod fleet_coordinate_bridge;
 
 pub use graph::{FleetGraph, Vertex, Edge, TrustValue};
 pub use specialists::{SpecialistReport, Specialist};
