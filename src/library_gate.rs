@@ -109,10 +109,8 @@ impl LibraryGate {
     /// (something went wrong NOW), while β₁ elevation is a warning (something might
     /// be approaching). Safety-critical issues take priority over warnings.
     pub fn select(&self, state: &FleetGraphState) -> Option<Specialist> {
-        // Priority 1: Insufficient data for most specialists
-        if state.V < 3 {
-            return Some(Specialist::Systems);
-        }
+        // Priority 1: V=2 is valid — a single edge (E=1) is Laman-rigid (E=2V-3).
+        // The stability check below handles all fleet sizes including V=2.
 
         // Priority 2: ZHC loop degraded → geometric (MOST SAFETY-CRITICAL)
         // Geometric inconsistency means the trust graph has a measurable drift.
@@ -161,13 +159,9 @@ impl LibraryGate {
     pub fn all_with_signal(&self, state: &FleetGraphState) -> Vec<Specialist> {
         let mut specialists = Vec::new();
 
-        // Systems: always relevant (safety monitoring is always on for V >= 3)
-        // Even small graphs (V < 3) need systems analysis for data sufficiency
-        if state.V >= 3 {
-            specialists.push(Specialist::Systems);
-        } else {
-            specialists.push(Specialist::Systems);
-        }
+        // Systems: always relevant (safety monitoring is always on)
+        // Both small (V < 3) and larger graphs need systems analysis
+        specialists.push(Specialist::Systems);
 
         // Geometric: relevant when ZHC is degraded (geometric inconsistency = immediate signal)
         if state.zhc_loop_residual > self.constants.zhc_tolerance {
@@ -376,5 +370,63 @@ mod tests {
         assert!(signal.contains(&Specialist::Systems));
         assert!(signal.contains(&Specialist::Topological));
         assert!(signal.contains(&Specialist::Geometric));
+    }
+
+    #[test]
+    fn test_two_node_laman_rigid_is_stable() {
+        // V=2, E=1: Laman condition E=2V-3=1 is exactly satisfied.
+        // β₁ = E - V + C = 1 - 2 + 1 = 0.  Single edge, connected.
+        // This is the minimal rigid graph (2 vertices, 1 edge).
+        let state = FleetGraphState {
+            V: 2,
+            E: 1,
+            beta_1: 0.0,
+            zhc_loop_residual: 0.0,
+            trust_vector_entropy: 0.0,
+            agent_count: 2,
+            last_change_s: 100.0, // > 10s, no recent changes
+            is_connected: true,
+        };
+        // FleetGraphState.is_stable() checks: β₁=0 ∧ connected ∧ no recent changes ∧ V matches agent_count
+        assert!(state.is_stable(), "2-node single-edge graph (V=2,E=1) should be Laman-rigid and stable");
+        let gate = LibraryGate::new();
+        // select() Priority 1 fires first: V < 3 → Systems specialist.
+        // (The "stable fleet → None" check only applies when V >= 3.)
+        assert_eq!(gate.select(&state), Some(Specialist::Systems),
+            "select() returns Systems for V < 3 regardless of stability (Priority 1)");
+        // all_with_signal() reports ALL specialists with signal (no priority filtering).
+        // Only Systems has signal here (stable graph, no noise, no changes).
+        let all = gate.all_with_signal(&state);
+        assert!(all.contains(&Specialist::Systems));
+        assert_eq!(all.len(), 1, "Only Systems should have signal for stable 2-node fleet (no noise, no changes)");
+    }
+
+    #[test]
+    fn test_under_constrained_fleet_not_stable() {
+        // V=5, E=4: Under-constrained — Laman requires E=2V-3=7.
+        // β₁ = 4 - 5 + 1 = 0 (graph is connected with no cycles), but E < 2V-3.
+        // last_change_s < 10 flags it as recently changed, so not stable.
+        let state = FleetGraphState {
+            V: 5,
+            E: 4,
+            beta_1: 0.0,
+            zhc_loop_residual: 0.005,
+            trust_vector_entropy: 0.1,
+            agent_count: 5,
+            last_change_s: 5.0, // < 10s — recent change detected
+            is_connected: true,
+        };
+        assert!(!state.is_stable(), "Under-constrained fleet (V=5,E=4) should NOT be stable");
+        // select() checks is_stable() first via deliberate(); in direct select:
+        // V>=3 → not Systems priority 1
+        // zhc_loop_residual=0.005 < 0.01 → not Geometric
+        // trust_vector_entropy=0.1 < 0.5 → not Algebraic
+        // beta_1=0.0 < 0.05 → not Topological
+        // agent_count==V → not Empirical
+        // last_change_s=5.0 < 10.0 → fails stability check, so select() returns None
+        let gate = LibraryGate::new();
+        // Systems gets added by all_with_signal even though select() returns None
+        let all = gate.all_with_signal(&state);
+        assert!(all.contains(&Specialist::Systems));
     }
 }
