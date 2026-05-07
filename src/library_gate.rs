@@ -7,19 +7,20 @@
 //!
 //! | Condition | Select | Why |
 //! |-----------|--------|-----|
-//! | V < 3 | Systems | Insufficient data |
-//! | β₁ = 0 AND graph rigid | None | Stable fleet |
+//! | V < 3 | Systems | Insufficient data — always monitor small fleets |
+//! | ZHC loop degraded | Geometric | Geometric inconsistency = immediate |
 //! | Trust vector noisy | Algebraic | Encoding analysis |
-//! | β₁ rising | Topological | H¹ emergence |
-//! | ZHC loop degraded | Geometric | ZHC closure |
-//! | Agent count changed | Empirical | Trust drift |
+//! | β₁ rising | Topological | H¹ emergence tracking |
+//! | Agent count changed | Empirical | Trust drift detection |
+//! | β₁ = 0 AND stable ≥10s | None | Fleet self-coordinating |
 //!
 //! Priority order (first match wins):
-//! 1. V < 3 → systems
-//! 2. β₁ = 0 AND rigid → None (stable)
+//! 1. V < 3 → systems (skip all signal detection for tiny fleets)
+//! 2. ZHC loop degraded → geometric
 //! 3. Trust vector noisy → algebraic
 //! 4. β₁ rising → topological
-//! 5. ZHC loop degraded → geometric
+//! 5. Agent count changed → empirical
+//! 6. β₁ = 0 AND stable > 10s → None (stable fleet)ric
 //! 6. Agent count changed → empirical
 //! 7. Default → None (stable)
 
@@ -109,43 +110,41 @@ impl LibraryGate {
     /// (something went wrong NOW), while β₁ elevation is a warning (something might
     /// be approaching). Safety-critical issues take priority over warnings.
     pub fn select(&self, state: &FleetGraphState) -> Option<Specialist> {
-        // Priority 1: V=2 is valid — a single edge (E=1) is Laman-rigid (E=2V-3).
-        // The stability check below handles all fleet sizes including V=2.
+        // V < 3: "Insufficient data" — a 2-node single edge is Laman-rigid
+        // by definition (E=2V-3=1), but the fleet is so minimal we always want
+        // safety monitoring. No signal detection for V < 3 — Systems only.
+        if state.V < 3 {
+            return Some(Specialist::Systems);
+        }
 
         // Priority 2: ZHC loop degraded → geometric (MOST SAFETY-CRITICAL)
-        // Geometric inconsistency means the trust graph has a measurable drift.
-        // This takes priority over β₁ because it's a detected problem, not a warning.
         if state.zhc_loop_residual > self.constants.zhc_tolerance {
             return Some(Specialist::Geometric);
         }
 
-        // Priority 3: Trust vector noisy → algebraic specialist
-        // Pythagorean48 encoding is unreliable — trust information is degrading.
+        // Priority 3: Trust vector noisy → algebraic
         if state.trust_vector_entropy > 0.5 {
             return Some(Specialist::Algebraic);
         }
 
-        // Priority 4: β₁ rising → topological specialist (H¹ emergence tracking)
-        // The graph is approaching the rigidity threshold. Track it.
+        // Priority 4: β₁ rising → topological (H¹ emergence tracking)
         if state.beta_1 > self.constants.beta_threshold {
             return Some(Specialist::Topological);
         }
 
-        // Priority 5: Agent count changed → empirical (after topology change)
-        // New agents change the equilibrium. Check for trust drift.
+        // Priority 5: Agent count changed → empirical
         if state.agent_count != state.V {
             return Some(Specialist::Empirical);
         }
 
-
-        // Priority 6: Stable fleet (β₁ = 0, connected, no recent changes)
-        // Fleet is self-coordinating. No specialists needed.
+        // Priority 6: Stable fleet — β₁ = 0, connected, no recent changes
+        // Fleet is self-coordinating. No specialists needed. (V >= 3 here)
         if state.beta_1 == 0.0 && state.is_connected && state.last_change_s > 10.0 && state.agent_count == state.V {
             return None;
         }
 
-        // Default: fleet is stable, no specialist needed
-        None
+        // Default: recently changed OR no signal yet. Safety monitoring.
+        Some(Specialist::Systems)
     }
 
     /// Return ALL specialists that have relevant signal for this state
