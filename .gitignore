@@ -1,3 +1,41 @@
+# Rust
 target/
-*.o
-*.bin
+**/*.rs.bk
+Cargo.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+
+# Coverage
+*.profraw
+*.profdata
+*.lcov
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Archives (moved to .archive)
+*.bak
+*.tmp
+*.log
