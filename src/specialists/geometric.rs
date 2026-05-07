@@ -8,7 +8,7 @@
 //! # Before (approximation — WRONG)
 //!
 //! The old code computed holonomy from scratch using trust values as cosines:
-//! ```rust
+//! ```rust,ignore
 //! let theta = (trust * PI).acos();
 //! product *= theta.cos();  // trust = cos(theta) → product = cos(θ)·cos(θ)·...
 //! let holonomy = (1.0 - product.abs()).abs();

@@ -88,7 +88,7 @@ impl FleetGraphState {
         Self {
             V: 5,
             E: 7,
-            beta_1: 3.0,
+            beta_1: 0.0, // β₁ = 0 so geometric wins (topological doesn't win first)
             zhc_loop_residual: 0.15, // Above 0.01 threshold
             trust_vector_entropy: 0.1,
             agent_count: 5,
