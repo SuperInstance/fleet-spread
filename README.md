@@ -1,10 +1,45 @@
 # fleet-spread
 
-Fleet graph analysis across 5 specialist dimensions with synthesis.
+Fleet graph analysis with library gate architecture (v2).
 
-## The Core Idea
+**v2 insight:** Don't run all 5 specialists — select THE ONE that matches.
 
-`fleet-spread` fans out a single fleet graph across 5 specialist analysis dimensions, producing constraint tiles and a unified synthesis. The synthesis layer identifies where specialists agree, where they disagree, and what's missing from all 5 — delivering analysis that's more than the sum of its parts.
+## Library Gate Architecture (v2)
+
+Instead of MoE-style "run all 5 and reconcile", v2 uses a **library gate selector** that picks exactly one specialist based on fleet graph state.
+
+### Bilateral Constant-Matching
+
+```
+Task appears → Library Gate checks → ONE specialist runs
+     ↓
+Agent has fixed constants
+Fleet has current state
+Match? → activate
+No match? → skip
+```
+
+### Gate Table
+
+| Condition | Select | Why |
+|-----------|--------|-----|
+| V < 3 | **Systems** | Insufficient data |
+| β₁ = 0 AND rigid | **None** | Fleet stable |
+| Trust noisy | **Algebraic** | Encoding analysis |
+| β₁ rising | **Topological** | H¹ emergence |
+| ZHC loop degraded | **Geometric** | ZHC closure |
+| Agent count changed | **Empirical** | Trust drift |
+
+Priority: V<3 → stable check → noisy → rising β₁ → degraded ZHC → count change
+
+### v1 vs v2
+
+| Aspect | v1 (MoE) | v2 (Library Gate) |
+|--------|----------|-------------------|
+| Specialists/decision | All 5 | 1 or 0 |
+| Reconciliation | Required | None |
+| Cost | O(5n) | O(n) |
+| Stable fleet | Runs all 5 | Runs 0 |
 
 ## The 5 Specialist Dimensions
 

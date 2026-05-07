@@ -1,17 +1,27 @@
 //! fleet-spread: Fleet graph analysis across 5 specialist dimensions with synthesis
 //!
 //! # Overview
-//! fleet-spread fans out a single fleet graph across 5 specialist analysis dimensions,
-//! producing constraint tiles and a unified synthesis. The synthesis layer identifies
-//! where specialists agree, where they disagree, and what's missing from all 5.
+//! fleet-spread v2 implements a library gate architecture:
+//! given fleet graph state, SELECT THE ONE CORRECT specialist and run ONLY that one.
+//! This is bilateral constant-matching, not MoE-style "run all 5 and reconcile".
 //!
-//! # The 5 Specialist Dimensions
+//! ## Library Gate Architecture (v2)
 //!
-//! - **S1: Topological** - Betti numbers, cycle basis, connected components
-//! - **S2: Geometric** - ZHC closure, holonomy, stress detection
-//! - **S3: Algebraic** - Pythagorean48 encoding, drift analysis
-//! - **S4: Systems** - Laman rigidity, constraint analysis
-//! - **S5: Empirical** - Trust anomaly detection, drift detection
+//! The library gate selects based on:
+//! - V < 3 → Systems (insufficient data)
+//! - β₁ = 0 AND rigid → None (stable)
+//! - Trust vector noisy → Algebraic
+//! - β₁ rising → Topological
+//! - ZHC loop degraded → Geometric
+//! - Agent count changed → Empirical
+//!
+//! ## Bilateral Constant-Matching
+//!
+//! - Agent has fixed criteria (its "constants")
+//! - Task appears with its requirements
+//! - Agent evaluates: does this task match my constants?
+//! - Fleet graph state evaluates: which specialist does this situation need?
+//! - No routing server. No auction. No TOP-K blending.
 //!
 //! # Example
 //!
@@ -38,12 +48,20 @@ pub mod plato_tile;
 pub mod git_commit;
 pub mod quality;
 pub mod test_helpers;
+pub mod constants;
+pub mod task;
+pub mod graph_state;
+pub mod library_gate;
 
 pub use graph::{FleetGraph, Vertex, Edge, TrustValue};
 pub use specialists::{SpecialistReport, Specialist};
 pub use synthesis::{SynthesisReport, SynthesisEngine, interpret_synthesis};
 pub use plato_tile::{PlatoTile, TileWriter, format_tiles_markdown};
 pub use quality::{QualityReport, QualityAssessment};
+pub use constants::AgentConstants;
+pub use task::TaskRequirements;
+pub use graph_state::FleetGraphState;
+pub use library_gate::LibraryGate;
 
 use specialists::{TopologicalSpecialist, GeometricSpecialist, AlgebraicSpecialist, SystemsSpecialist, EmpiricalSpecialist};
 
