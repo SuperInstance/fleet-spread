@@ -1,5 +1,15 @@
 # fleet-spread
 
+
+## Meta
+
+**Domain:** agent-coordination
+**Depends on:** fleet-coordinate
+**Depended by:** —
+**Implements:** deadband-captain, library-gate, specialist-selection
+**Related:** fleet-coordinate, fleet-topology, fleet-murmur
+
+
 [![CI](https://github.com/SuperInstance/fleet-spread/actions/workflows/ci.yml/badge.svg)](https://github.com/SuperInstance/fleet-spread/actions/workflows/ci.yml)
 
 Fleet graph analysis with library gate architecture (v2).
