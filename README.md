@@ -32,7 +32,7 @@ println!("Synthesis gain: {:.2}", report.gain());
 
 **What just happened:** The library gate examined the fleet graph (3 vertices, 3 edges, β₁=0, rigid) and selected the **Systems** specialist because V=3. No voting, no reconciliation, no O(5n) cost.
 
-Run tests: `cargo test` — **147 tests** covering specialists, synthesis, quality metrics, and library gate selection logic.
+Run tests: `cargo test` — **133 tests** covering specialists, synthesis, quality metrics, and library gate selection logic.
 
 ---
 
@@ -163,7 +163,7 @@ fleet-spread/
 │   ├── plato_tile.rs      # PLATO output
 │   ├── git_commit.rs      # Git integration
 │   └── quality.rs         # Quality metrics
-└── tests/                 # Test suites (147 tests)
+└── tests/                 # Test suites (133 tests)
 ```
 
 ---
